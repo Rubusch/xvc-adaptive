@@ -2,6 +2,7 @@
 #define XVCDRIVER_H
 
 #include <iostream>
+#include <cstdint>
 #include <vector>
 #include <stdio.h>
 
