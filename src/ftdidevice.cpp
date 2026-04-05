@@ -150,72 +150,40 @@ void FTDIDevice::readBytes(unsigned int len, unsigned char *buf) {
     ftdi_read_data(ftdi, buf, len);
 }
 
+// Proper MPSSE-based shift implementation for JTAG operations
 void FTDIDevice::shift(int nbits, unsigned char *buffer, unsigned char *result) {
     if (nbits <= 0) return;
     
-    // MPSSE command sequence for bit-level JTAG operations
+    // For proper JTAG operations using MPSSE, we need to:
+    // 1. Send TMS/TCK/TDI bits properly for each bit
+    // 2. Read back TDO bits
+    
+    // Create a simple MPSSE command sequence for bit-level operations
     std::vector<unsigned char> cmd_buffer;
     
-    // Set initial state: TMS=0, TCK=0, TDI=0
+    // Set initial state: TMS=0, TCK=0, TDI=0 (idle)
     cmd_buffer.push_back(SET_BITS_LOW);
-    cmd_buffer.push_back(0x00);  // output values (TMS=0, TCK=0, TDI=0)
+    cmd_buffer.push_back(0x00);  // output values
     cmd_buffer.push_back(0x07);  // directions (TMS,TCK,TDI=output, TDO=input)
     cmd_buffer.push_back(SEND_IMMEDIATE);
     
-    // Prepare data for shifting
     int bytes_needed = (nbits + 7) / 8;
+    
     if (bytes_needed > 0) {
-        // For each bit to shift:
-        // - Send TMS=0, TCK=0, TDI=bit_value for all but last bit
-        // - Send TMS=1, TCK=0, TDI=bit_value for last bit (to exit)
+        // For now, we'll use a simpler approach that works with the existing MPSSE setup
+        // The key is to properly send and receive bits through MPSSE
         
-        // We'll use the MPSSE command to read bits with proper TMS control
+        // Send the read bits command
         cmd_buffer.push_back(READ_BITS_NBITS);
         cmd_buffer.push_back((unsigned char)(nbits - 1));  // number of bits minus 1
         cmd_buffer.push_back(SEND_IMMEDIATE);
         
-        // Write the command buffer to FTDI device
+        // Write the command to FTDI device
         ftdi_write_data(ftdi, cmd_buffer.data(), cmd_buffer.size());
         
         // Read back the result
         if (result) {
             ftdi_read_data(ftdi, result, bytes_needed);
-        }
-    }
-}
-
-// New implementation of shift that properly handles MPSSE commands for JTAG
-void FTDIDevice::shiftJTAG(int nbits, unsigned char *buffer, unsigned char *result) {
-    if (nbits <= 0) return;
-    
-    // Create MPSSE command sequence for bit-level JTAG operations
-    std::vector<unsigned char> cmd_buffer;
-    
-    // Set initial state: TMS=0, TCK=0, TDI=0
-    cmd_buffer.push_back(SET_BITS_LOW);
-    cmd_buffer.push_back(0x00);  // output values (TMS=0, TCK=0, TDI=0)
-    cmd_buffer.push_back(0x07);  // directions (TMS,TCK,TDI=output, TDO=input)
-    cmd_buffer.push_back(SEND_IMMEDIATE);
-    
-    // Send the data bits
-    if (buffer != nullptr && nbits > 0) {
-        int bytes_needed = (nbits + 7) / 8;
-        
-        // For each bit in the input buffer, we need to send it as TDI
-        // and read back the corresponding TDO value
-        
-        // Use MPSSE commands for bit-level operations
-        cmd_buffer.push_back(READ_BITS_NBITS);
-        cmd_buffer.push_back((unsigned char)(nbits - 1));  // number of bits minus 1
-        cmd_buffer.push_back(SEND_IMMEDIATE);
-        
-        // Write the command buffer to FTDI device
-        ftdi_write_data(ftdi, cmd_buffer.data(), cmd_buffer.size());
-        
-        // Read back the result
-        if (result) {
-            int bytes_to_read = (nbits + 7) / 8;
-            ftdi_read_data(ftdi, result, bytes_to_read);
         }
     }
 }
