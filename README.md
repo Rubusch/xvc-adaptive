@@ -55,7 +55,7 @@ Define AXIJTAG_UIO_ID environment variable to specify UIO device file id (defaul
 ## Build
 FTDI code depends from libusb and libftdi
 ```
-apt-get install libusb-1.0-0 libusb-1.0-0-dev libusb-dev libftdi1 libftdi1-dev
+apt-get install libusb-dev libusb-1.0-0 libusb-1.0-0-dev libusb-dev libftdi1 libftdi1-dev
 ```
 
 ## AXI driver
