@@ -30,10 +30,11 @@ FTDIDevice::FTDIDevice(int vid, int pid, enum ftdi_interface interface, const ch
    // Correct MPSSE initialization for JTAG
    // For JTAG: TMS=1(output), TCK=1(output), TDI=1(output), TDO=0(input)
    // Direction bits: 0x07 = 0b00000111 (bits 0-2 outputs, bit 3 input)
-   unsigned char buf[] = {
+   unsigned char buf[10] = {
       DIS_DIV_5,
       SET_BITS_LOW, 0x00, 0x07,     // output values=0, directions=0x07 
       TCK_DIVISOR, 0x2B, 0x01,      // 100 kHz  
+      0x82, 0x00, 0x00,
       SEND_IMMEDIATE };
 
    ftdi_set_bitmode(ftdi, 0x07, BITMODE_MPSSE);  // Set bit mode with correct directions
@@ -58,10 +59,8 @@ FTDIDevice::FTDIDevice(int vid, int pid, enum ftdi_interface interface, const ch
       throw std::runtime_error("E: FTDIDevice bus config error: " + std::string(busconf));
    }
 
-   buf[2] |= mask[0];   // dbus_data
-   buf[3] |= mask[1];   // dbus_en
-   buf[8] = mask[2];    // cbus_data
-   buf[9] = mask[3];    // cbus_en
+   buf[6] = mask[2];    // cbus_data
+   buf[7] = mask[3];    // cbus_en
 
    if ((res = ftdi_write_data(ftdi, buf, sizeof(buf))) != sizeof(buf)) {
       std::string errmsg(ftdi_get_error_string(ftdi));
@@ -74,4 +73,78 @@ FTDIDevice::FTDIDevice(int vid, int pid, enum ftdi_interface interface, const ch
    // try to detect device
    if(!detect())
       std::cout << "WARNING: FTDIDevice: failed to detect JTAG target" << std::endl;
+}
+
+bool FTDIDevice::detect() {
+    printDebug("FTDIDevice::detect start", 1);
+    
+    DeviceDB devDB(0);
+    uint32_t tempId;
+    const char *tempDesc;
+    bool found = false;
+
+    // Set very slow clock for reliable detection
+    setClockFrequency(91553); // ~91.553 kHz
+    
+    // Try to read IDCODE
+    tempId = scanChain();
+    tempDesc = devDB.idToDescription(tempId);
+
+    if (tempDesc) {
+        found = true;
+        idcode = tempId;
+        irlen = devDB.idToIRLength(idcode);
+        idcmd = devDB.idToIDCmd(idcode);
+        desc = tempDesc;
+        detected = true;
+    }
+
+    if(detected && verbose)
+        printf("FTDIDevice::detect device detected: idcode:0x%X irlen:%d idcmd:0x%X desc:%s\n",
+            idcode, irlen, idcmd, desc.c_str());
+
+    printDebug("FTDIDevice::detect end", 1);
+    return found;
+}
+
+void FTDIDevice::setClockDiv(bool div5, int value) {
+    // Implementation for setting clock divisor
+    // This is a placeholder - actual implementation depends on FTDI chip specifics
+}
+
+void FTDIDevice::setClockFrequency(int freq) {
+    // Implementation for setting clock frequency
+    // This is a placeholder - actual implementation depends on FTDI chip specifics
+}
+
+void FTDIDevice::setTDOPosSampling(bool value) {
+    // Implementation for TDO sampling edge
+    if (value)
+        samplingEdge = POS_EDGE;
+    else
+        samplingEdge = NEG_EDGE;
+}
+
+int FTDIDevice::getDivisorByFrequency(bool div5, int freq) {
+    // Implementation to calculate divisor from frequency
+    return 0; // Placeholder
+}
+
+int FTDIDevice::getFrequencyByDivisor(bool div5, int div) {
+    // Implementation to calculate frequency from divisor
+    return 0; // Placeholder
+}
+
+FTDIDevice::~FTDIDevice() {
+    if (ftdi) {
+        ftdi_free(ftdi);
+    }
+}
+
+void FTDIDevice::readBytes(unsigned int len, unsigned char *buf) {
+    // Implementation for reading bytes from FTDI
+}
+
+void FTDIDevice::shift(int nbits, unsigned char *buffer, unsigned char *result) {
+    // Implementation for shifting data through JTAG
 }
