@@ -170,11 +170,14 @@ void FTDIDevice::shift(int nbits, unsigned char *buffer, unsigned char *result) 
     int bytes_needed = (nbits + 7) / 8;
     
     if (bytes_needed > 0) {
-        // For now, we'll use a simpler approach that works with the existing MPSSE setup
-        // The key is to properly send and receive bits through MPSSE
+        // Use the simpler approach - send a command to read bits
+        // The FTDI MPSSE commands are:
+        // 0x80 = READ_BITS_NBITS
+        // 0x81 = READ_BITS_NBITS with TMS bit set
+        // 0x82 = READ_BITS_NBITS with TMS bit set and TCK bit set
         
-        // Send the read bits command
-        cmd_buffer.push_back(READ_BITS_NBITS);
+        // For now, we'll use a basic approach that works with the existing MPSSE setup
+        cmd_buffer.push_back(0x80);  // READ_BITS_NBITS command
         cmd_buffer.push_back((unsigned char)(nbits - 1));  // number of bits minus 1
         cmd_buffer.push_back(SEND_IMMEDIATE);
         
