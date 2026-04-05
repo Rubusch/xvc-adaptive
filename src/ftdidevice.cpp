@@ -30,17 +30,16 @@ FTDIDevice::FTDIDevice(int vid, int pid, enum ftdi_interface interface, const ch
    // Correct MPSSE initialization for JTAG
    // For JTAG: TMS=1(output), TCK=1(output), TDI=1(output), TDO=0(input)
    // Direction bits: 0x07 = 0b00000111 (bits 0-2 outputs, bit 3 input)
-   unsigned char buf[10] = {
+   unsigned char buf[] = {
       DIS_DIV_5,
       SET_BITS_LOW, 0x00, 0x07,     // output values=0, directions=0x07 
       TCK_DIVISOR, 0x2B, 0x01,      // 100 kHz  
-      0x82, 0x00, 0x00,
       SEND_IMMEDIATE };
 
    ftdi_set_bitmode(ftdi, 0x07, BITMODE_MPSSE);  // Set bit mode with correct directions
 
-   ftdi_usb_purge_rx_buffer(ftdi);
-   ftdi_usb_purge_tx_buffer(ftdi);
+   // ftdi_usb_purge_rx_buffer(ftdi);
+   // ftdi_usb_purge_tx_buffer(ftdi);
   
    std::stringstream ss;
    if(busconf == nullptr)
@@ -109,12 +108,15 @@ bool FTDIDevice::detect() {
 
 void FTDIDevice::setClockDiv(bool div5, int value) {
     // Implementation for setting clock divisor
-    // This is a placeholder - actual implementation depends on FTDI chip specifics
+    unsigned char buf[3] = {TCK_DIVISOR, (unsigned char)(value & 0xFF), (unsigned char)((value >> 8) & 0xFF)};
+    ftdi_write_data(ftdi, buf, 3);
 }
 
 void FTDIDevice::setClockFrequency(int freq) {
-    // Implementation for setting clock frequency
-    // This is a placeholder - actual implementation depends on FTDI chip specifics
+    // Calculate divisor for given frequency
+    bool div5 = (freq > MAX_CFREQ_DIV5_OFF);
+    int divisor = (div5 ? MAX_CFREQ_DIV5_ON : MAX_CFREQ_DIV5_OFF) / freq;
+    setClockDiv(div5, divisor);
 }
 
 void FTDIDevice::setTDOPosSampling(bool value) {
@@ -126,13 +128,13 @@ void FTDIDevice::setTDOPosSampling(bool value) {
 }
 
 int FTDIDevice::getDivisorByFrequency(bool div5, int freq) {
-    // Implementation to calculate divisor from frequency
-    return 0; // Placeholder
+    // Calculate divisor from frequency
+    return (div5 ? MAX_CFREQ_DIV5_ON : MAX_CFREQ_DIV5_OFF) / freq;
 }
 
 int FTDIDevice::getFrequencyByDivisor(bool div5, int div) {
-    // Implementation to calculate frequency from divisor
-    return 0; // Placeholder
+    // Calculate frequency from divisor
+    return (div5 ? MAX_CFREQ_DIV5_ON : MAX_CFREQ_DIV5_OFF) / div;
 }
 
 FTDIDevice::~FTDIDevice() {
@@ -142,9 +144,10 @@ FTDIDevice::~FTDIDevice() {
 }
 
 void FTDIDevice::readBytes(unsigned int len, unsigned char *buf) {
-    // Implementation for reading bytes from FTDI
+    ftdi_read_data(ftdi, buf, len);
 }
 
 void FTDIDevice::shift(int nbits, unsigned char *buffer, unsigned char *result) {
     // Implementation for shifting data through JTAG
+    // This is a simplified version - full implementation needed
 }
