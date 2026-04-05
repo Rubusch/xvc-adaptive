@@ -27,14 +27,16 @@ FTDIDevice::FTDIDevice(int vid, int pid, enum ftdi_interface interface, const ch
    ftdi_usb_reset(ftdi);
    ftdi_set_latency_timer(ftdi, 1);
 
+   // Correct MPSSE initialization for JTAG
+   // For JTAG: TMS=0(output), TCK=1(output), TDI=1(output), TDO=0(input)
+   // Direction bits: 0x07 = 0b00000111 (bits 0-2 outputs, bit 3 input)
    unsigned char buf[] = {
       DIS_DIV_5,
-      SET_BITS_LOW, 0x00, 0x0B,     // set TMS high, TCK/TDI/TMS as outputs
+      SET_BITS_LOW, 0x00, 0x07,     // output values=0, directions=0x07 
       TCK_DIVISOR, 0x2B, 0x01,      // 100 kHz  
-      0x82, 0x00, 0x00,
       SEND_IMMEDIATE };
 
-   ftdi_set_bitmode(ftdi, 0x0B, BITMODE_MPSSE);
+   ftdi_set_bitmode(ftdi, 0x07, BITMODE_MPSSE);  // Set bit mode with correct directions
 
    ftdi_usb_purge_rx_buffer(ftdi);
    ftdi_usb_purge_tx_buffer(ftdi);
@@ -66,7 +68,7 @@ FTDIDevice::FTDIDevice(int vid, int pid, enum ftdi_interface interface, const ch
       throw std::runtime_error("E: FTDIDevice error initializing MPSSE (" + errmsg + ")");
    }
 
-   // set TDO sampling on clock negative edge
+   // set TDO sampling on clock negative edge (default)
    setTDOPosSampling(false);
 
    // try to detect device
