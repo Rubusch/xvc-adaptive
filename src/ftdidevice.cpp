@@ -181,18 +181,20 @@ bool FTDIDevice::detect(void) {
 
 void FTDIDevice::readBytes(unsigned int len, unsigned char *buf) {
    
-   int read, to_read, last_read;
-   to_read = len;
-   read = 0;
+   int read = 0;
+   int to_read = len;
    
-   last_read = ftdi_read_data(ftdi, buf, to_read);
-   if (last_read > 0)
-      read += last_read;
-
    while (read < to_read) {
-      last_read = ftdi_read_data(ftdi, buf + read, to_read - read);
-      if (last_read > 0)
-         read += last_read;
+      int last_read = ftdi_read_data(ftdi, buf + read, to_read - read);
+      if (last_read < 0) {
+         std::string errmsg(ftdi_get_error_string(ftdi));
+         throw std::runtime_error("E: FTDIDevice read error (" + errmsg + ")");
+      }
+      if (last_read == 0) {
+         // Handle timeout or no data
+         break;
+      }
+      read += last_read;
    } 
 }
 
@@ -323,7 +325,11 @@ void FTDIDevice::shift(int nbits, unsigned char *buffer, unsigned char *result) 
       }
 
       // send the created command list
-      ftdi_write_data(ftdi, ftdi_cmd, wr_ptr);
+      int write_result = ftdi_write_data(ftdi, ftdi_cmd, wr_ptr);
+      if (write_result < 0) {
+         std::string errmsg(ftdi_get_error_string(ftdi));
+         throw std::runtime_error("E: FTDIDevice write error (" + errmsg + ")");
+      }
 
       // read the response
       readBytes(rd_len, ftdi_res);
