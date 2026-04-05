@@ -132,17 +132,19 @@ void IOServer::start(void) {
                   FD_SET(newfd, &conn);
                }
             
-            } else if (handleData(fd)) {
+            } else {
 
-               if (verbose) {
-                  char clntName[INET_ADDRSTRLEN];
-                  inet_ntop(AF_INET,&address.sin_addr.s_addr,clntName,sizeof(clntName));
-                  std::cout << "IOServer: connection closed - fd " << fd << " (" << clntName << ")" << std::endl;
+               // Handle client connection
+               if (handleData(fd)) {
+                  if (verbose) {
+                     char clntName[INET_ADDRSTRLEN];
+                     inet_ntop(AF_INET,&address.sin_addr.s_addr,clntName,sizeof(clntName));
+                     std::cout << "IOServer: connection closed - fd " << fd << " (" << clntName << ")" << std::endl;
+                  }
+
+                  close(fd);
+                  FD_CLR(fd, &conn);
                }
-
-               close(fd);
-
-               FD_CLR(fd, &conn);
             }
          
          } else if (FD_ISSET(fd, &except)) {

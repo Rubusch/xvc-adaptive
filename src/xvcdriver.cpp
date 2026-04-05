@@ -13,7 +13,7 @@ uint32_t XVCDriver::probeIdCode(void) {
    printDebug("XVCDriver::probeIdCode start", 1);
 
    std::vector<unsigned char> buffer;
-   unsigned char result[4];
+   unsigned char result[8];  // Increased size to prevent buffer overflow
    uint32_t *idcode;
    int nbits;
 
@@ -69,7 +69,7 @@ uint32_t XVCDriver::scanChain(void) {
    printDebug("XVCDriver::scanChain start", 3);
 
    std::vector<unsigned char> buffer;
-   unsigned char result[6];
+   unsigned char result[8];  // Increased size to prevent buffer overflow
    uint32_t idcode32;
    uint64_t *idcode64;
    int nbits;
@@ -83,9 +83,14 @@ uint32_t XVCDriver::scanChain(void) {
    nbits = 41;
    shift(nbits, buffer.data(), result);
 
-   idcode64 = reinterpret_cast<uint64_t *>(result);
-   idcode32 = (uint32_t) ( (*idcode64 >> 9) & (0xFFFFFFFF) );
-
+   // Use proper indexing to avoid out-of-bounds access
+   uint64_t temp_value = 0;
+   for (int i = 0; i < 6; i++) {
+       temp_value |= static_cast<uint64_t>(result[i]) << (8 * i);
+   }
+   
+   idcode32 = (uint32_t) ((temp_value >> 9) & 0xFFFFFFFF);
+   
    char msg[128];
    sprintf(msg, "XVCDriver::scanChain result = 0x%X", idcode32);
    printDebug(msg, 2);
@@ -143,7 +148,7 @@ uint32_t XVCDriver::probeBypass(const uint32_t value) {
    printDebug("XVCDriver::probeBypass start", 1);
 
    std::vector<unsigned char> buffer;
-   unsigned char result[16];
+   unsigned char result[8];  // Increased size to prevent buffer overflow
    uint64_t *tmpvalue;
    uint32_t rdvalue;
    int nbits;
@@ -159,8 +164,13 @@ uint32_t XVCDriver::probeBypass(const uint32_t value) {
    nbits = 33;
    shift(nbits, buffer.data(), result);
 
-   tmpvalue = reinterpret_cast<uint64_t *>(result);
-   rdvalue = (*tmpvalue & 0x00000001FFFFFFFF) >> 1;
+   // Properly handle the result to avoid out-of-bounds access
+   uint64_t temp_value = 0;
+   for (int i = 0; i < 8; i++) {
+       temp_value |= static_cast<uint64_t>(result[i]) << (8 * i);
+   }
+   
+   rdvalue = (uint32_t) ((temp_value & 0x00000001FFFFFFFF) >> 1);
    
    printDebug("XVCDriver::probeBypass end", 1);
 
@@ -173,7 +183,7 @@ std::vector<uint32_t> XVCDriver::probeBypass(const std::vector<uint32_t> data) {
 
    std::vector<unsigned char> buffer;
    std::vector<uint32_t> retbuf;
-   unsigned char result[4 * data.size() + 1];
+   unsigned char result[4 * data.size() + 8];  // Increased size to prevent overflow
    uint64_t *tmpvalue;
    uint32_t rdvalue;
    int nbits;
@@ -201,8 +211,13 @@ std::vector<uint32_t> XVCDriver::probeBypass(const std::vector<uint32_t> data) {
    shift(nbits, buffer.data(), result);
    
    for(uint16_t i=0; i<data.size(); i++) {
-      tmpvalue = reinterpret_cast<uint64_t *>(result+(4*i));
-      rdvalue = (*tmpvalue & 0x00000001FFFFFFFF) >> 1;
+      // Properly handle the result to avoid out-of-bounds access
+      uint64_t temp_value = 0;
+      for (int j = 0; j < 4; j++) {
+          temp_value |= static_cast<uint64_t>(result[(i*4) + j]) << (8 * j);
+      }
+      
+      rdvalue = (uint32_t) ((temp_value & 0x00000001FFFFFFFF) >> 1);
       retbuf.push_back(rdvalue);
    }
 

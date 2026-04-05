@@ -36,8 +36,8 @@ FTDIDevice::FTDIDevice(int vid, int pid, enum ftdi_interface interface, const ch
 
    ftdi_set_bitmode(ftdi, 0x0B, BITMODE_MPSSE);
 
-   ftdi_usb_purge_rx_buffer(ftdi);
-   ftdi_usb_purge_tx_buffer(ftdi);
+   // Use the newer functions instead of deprecated ones
+   ftdi_usb_purge_buffers(ftdi);
   
    std::stringstream ss;
    if(busconf == nullptr)
